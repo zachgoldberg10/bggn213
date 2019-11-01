@@ -1,0 +1,46 @@
+---
+title: "Class 6 HW Function"
+author: "Zach Goldberg"
+date: "10/18/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Writing the function
+
+This function accepts a 4-character string as an input and reads in the PDB entry of the input. It then trims the file and makes a B-factor plot from the trimmed data.
+```{r}
+bfactor.plot <- function(p){ #Input p will be the PDB entry code
+  
+  #Check to ensure that the input is in the correct format
+  if(nchar(p)!=4 | is.character(p)==FALSE){
+    stop("Input must be a 4 character string")
+  }
+  
+  #Read and trim PDB file
+  x <- bio3d::read.pdb(p)
+  x.chainA <- bio3d::trim.pdb(x, chain="A", elety="CA") 
+  x.b <- x.chainA$atom$b 
+  
+  #Output the plot
+  bio3d::plotb3(x.b, sse=x.chainA, typ="l", ylab="Bfactor") 
+}
+
+```
+
+## Using the function correctly
+
+```{r}
+bfactor.plot("4AKE")
+```
+
+## Using the function incorrectly
+```{r, eval = FALSE}
+bfactor.plot("ABCDEFG")
+bfactor.plot(TRUE)
+
+```
+
