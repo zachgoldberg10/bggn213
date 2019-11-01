@@ -1,0 +1,95 @@
+---
+title: "Class07"
+author: "Zach Goldberg"
+date: "10/23/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Revisit functions fron last time
+
+
+```{r}
+source("http://tinyurl.com/rescale-R")
+
+```
+
+Let's try out the rescale function
+
+```{r}
+rescale(1:10)
+rescale(c(3, 10, NA, 7))
+```
+
+Rescale2 has and stop()
+```{r, eval = FALSE}
+rescale2(c(3, 10, NA, 7, "Zach"))
+```
+
+Write a function called both_na that counts the number of positiions in two vectors that are both  NA
+
+```{r}
+both_na <- function(x, y){
+  sum(is.na(x) & is.na(y))
+}
+
+x <- c(NA, 2, 3, 4, NA, 6, 7)
+y <- c(1, 2, 3, 4, NA, 6, 7)
+both_na(x,y)
+```
+
+Testing both_na on more inputs
+```{r}
+x <- c(NA, NA, NA)
+y1 <- c( 1, NA, NA)
+y2 <- c( 1, NA, NA, NA)
+
+both_na(x, y2)
+```
+Deal with recycling
+```{r, eval = FALSE}
+both_na2 <- function(x,y){
+  if(length(x) != length(y)){
+    stop("Input vectors are different lengths")
+  }
+  sum(is.na(x) & is.na(y))
+}
+
+both_na2(x,y2)
+```
+Write function to grade HW
+
+```{r}
+# student 1
+s1 <- c(100, 100, 100, 100, 100, 100, 100, 90) 
+
+# student 2
+s2 <- c(100, NA, 90, 90, 90, 90, 97, 80)
+
+v <- sort(s2, decreasing = FALSE, na.last = FALSE)
+which.min(s2)
+
+grade <- function(x){ #Takes a vector, removes the lowest score, and computes the average
+ x[is.na(x)] <- 0 #Replace NAs with 0
+ mean(x[-which.min(x)]) #Drop the lowest score and find the average
+}
+
+grade(s2)
+
+```
+
+Write a function to grade a whole class
+```{r}
+allgrade <- read.csv("http://tinyurl.com/gradeinput")
+row.names(allgrade) <- allgrade[,1]
+allgrade <- allgrade[,-1]
+
+apply(allgrade, 1, grade)
+
+
+
+```
+
