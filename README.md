@@ -1,2 +1,2 @@
 # bggn213
-BGGN 213 Bioinformatics FA19
+This is my work from BGGN213 at UCSD from Fall Quarter 2019
