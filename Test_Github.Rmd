@@ -10,3 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Testing Testing Testing
+
+```{r}
+summary(pressure)
+```
+
+
+```{r}
+
+plot(pressure)
+```
+
