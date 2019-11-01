@@ -1,0 +1,241 @@
+---
+title: "Class09 Breast Cancer Miniproject"
+author: "Zach Goldberg"
+date: "10/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Mini project https://bioboot.github.io/bggn213_F19/class-material/lab-9-bggn213-WEBX.html#background
+
+Read in data and look at it
+```{r}
+wisc.df <- read.csv("https://bioboot.github.io/bimm143_S18/class-material/WisconsinCancer.csv")
+head(wisc.df)
+```
+```{r}
+table <- table(wisc.df$diagnosis)
+```
+
+Here we examine data from `r nrow(wisc.df)` patients, of which `r table[1]` are benign and `r table[2]` are malignant 
+```{r}
+wisc.data <- as.matrix(wisc.df[,3:32])
+row.names(wisc.data) <- wisc.df$id
+
+diagnosis <- wisc.df$diagnosis
+diagnosis
+```
+
+How many columns end with '_mean'?
+```{r}
+length(grep("_mean$", colnames(wisc.data)))
+```
+
+Does the data need to be scaled for PCA? How to check:
+```{r}
+col.means <- colMeans(wisc.data)
+round(apply(wisc.data,2,sd), 2)
+```
+Yes, the data needs to be scaled!
+
+Call prcomp()
+```{r}
+wisc.pr <- prcomp(wisc.data, scale = TRUE)
+summary(wisc.pr)
+```
+
+Bi-plot
+```{r}
+biplot(wisc.pr)
+```
+
+This plot is a huge mess! 
+
+Scatter plot of PCA 1 and 2
+```{r}
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col = diagnosis, xlab = "PC1", ylab = "PC2")
+```
+
+Scatter plot of PC1 and PC3
+```{r}
+plot(wisc.pr$x[,1], wisc.pr$x[,3], col = diagnosis, xlab = "PC1", ylab = "PC3")
+```
+
+##Exploring Variance
+
+```{r}
+pr.var <- wisc.pr$sdev^2
+head(pr.var)
+```
+
+```{r}
+pve <- pr.var/sum(pr.var)
+plot(pve, xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained", 
+     ylim = c(0, 1), type = "o")
+```
+
+Alternate of above plot
+```{r}
+barplot(pve, ylab = "Precent of Variance Explained",
+     names.arg=paste0("PC",1:length(pve)), las=2, axes = FALSE)
+axis(2, at=pve, labels=round(pve,2)*100 )
+```
+
+Optional: There are quite a few CRAN packages that are helpful for PCA. This includes the factoextra package. Feel free to explore this package. For example:
+```{r}
+## ggplot based graph
+#install.packages("factoextra")
+library(factoextra)
+fviz_eig(wisc.pr, addlabels = TRUE)
+```
+
+## Hierarchical clustering
+
+```{r}
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled)
+wisc.hclust <- hclust(data.dist, method = "complete")
+```
+
+
+```{r}
+plot(wisc.hclust)
+abline(h = 19, col="red", lty=2)
+```
+
+Cut down on clusters
+
+```{r}
+wisc.hclust.clusters <- cutree(wisc.hclust, 4)
+table(wisc.hclust.clusters, diagnosis)
+```
+## 4. OPTIONAL: K-means clustering
+
+As you now know from the last class, there are two main types of clustering: hierarchical and k-means.
+
+In this section, you will create a k-means clustering model on the Wisconsin breast cancer data and compare the results to the actual diagnoses and the results of your hierarchical clustering model. If you are running a little behind feel free to skip ahead to section 5 otherwise if you find you are flying through things please take some time to see how each clustering model performs in terms of separating the two diagnoses and how the clustering models compare to each other.
+
+Create a k-means model on wisc.data, assigning the result to wisc.km. Be sure to create 2 clusters, corresponding to the actual number of diagnosis. Also, remember to scale the data (with the scale() function and repeat the algorithm 20 times (by setting setting the value of the nstart argument appropriately). Running multiple times such as this will help to find a well performing model.
+```{r}
+wisc.km <- kmeans(wisc.data, centers= 2, nstart= 20)
+table(wisc.km$cluster, diagnosis)
+```
+
+Use the table() function to compare the cluster membership of the k-means model (wisc.km$cluster) to your hierarchical clustering model from above (wisc.hclust.clusters). Recall the cluster membership of the hierarchical clustering model is contained in wisc.hclust.clusters object.
+
+```{r}
+table(wisc.hclust.clusters, wisc.km$cluster)
+```
+
+## 5. Combining methods
+
+Clustering on PCA results
+In this final section, you will put together several steps you used earlier and, in doing so, you will experience some of the creativity and open endedness that is typical in unsupervised learning.
+
+Recall from earlier sections that the PCA model required significantly fewer features to describe 70%, 80% and 95% of the variability of the data. In addition to normalizing data and potentially avoiding over-fitting, PCA also uncorrelates the variables, sometimes improving the performance of other modeling techniques.
+
+Let's see if PCA improves or degrades the performance of hierarchical clustering.
+
+Using the minimum number of principal components required to describe at least 90% of the variability in the data, create a hierarchical clustering model with the linkage method="ward.D2". We use Ward's criterion here because it is based on multidimensional variance like principal components analysis. Assign the results to wisc.pr.hclust.
+
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[,1:7]), method = "ward.D2")
+plot(wisc.pr.hclust)
+```
+
+```{r}
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+```
+
+
+```{r}
+table(grps, diagnosis)
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+```
+
+```{r}
+library(rgl)
+plot3d(wisc.pr$x[,1:3], xlab="PC 1", ylab="PC 2", zlab="PC 3", cex=1.5, size=1, type="s", col=grps)
+rglwidget(width = 400, height = 400)
+```
+
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[,1:7]), method="ward.D2")
+wisc.pr.hclust.clusters <- cutree(wisc.pr.hclust, k=2)
+prhclust.table<-table(wisc.pr.hclust.clusters, diagnosis)
+prhclust.table
+```
+
+Q20. How well do the k-means and hierarchical clustering models you created in previous sections (i.e. before PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.km$cluster and wisc.hclust.clusters) with the vector containing the actual diagnoses.
+```{r}
+km.table <- table(wisc.km$cluster, diagnosis)
+km.table
+hclust.table <- table(wisc.hclust.clusters, diagnosis)
+hclust.table
+```
+
+## 6. Sensitivity/Specificity
+
+Sensitivity refers to a test's ability to correctly detect ill patients who do have the condition. In our example here the sensitivity is the total number of samples in the cluster identified as predominantly malignant (cancerous) divided by the total number of known malignant samples.
+
+Specificity relates to a test's ability to correctly reject healthy patients without a condition. In our example specificity is the proportion of benign (not cancerous) samples in the cluster identified as predominantly benign that are known to be benign.
+
+```{r}
+prhclust.table
+km.table
+hclust.table
+```
+
+
+```{r}
+# sens  = found malignant/all malignant
+# spec = found benign/all benign 
+
+#k means
+k.sens <- km.table[1,2]/(km.table[1,2]+km.table[2,2])
+k.spec <- km.table[2,1]/(km.table[1,1]+km.table[2,1])
+
+#hc
+hc.sens <- hclust.table[1,2]/sum(hclust.table[,2])
+hc.spec <- hclust.table[3,1]/sum(hclust.table[,1])
+
+#pca and hc
+phc.sens <- prhclust.table[1,2]/sum(prhclust.table[,2])
+phc.spec <- prhclust.table[2,1]/sum(prhclust.table[,1])
+
+#make a matrix
+spec.sens.mat <- matrix(c(k.sens,hc.sens,phc.sens,k.spec,hc.spec,phc.spec), nrow = 3, ncol = 2 )
+rownames(spec.sens.mat) <- c("K-means", "HClust", "PCA HClust")
+colnames(spec.sens.mat) <- c("Sensitivity", "Specificity")
+
+spec.sens.mat
+```
+
+## 7. Prediction
+
+We will use the predict() function that will take our PCA model from before and new cancer cell data and project that data onto our PCA space.
+
+```{r}
+#url <- "new_samples.csv"
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=diagnosis)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+
+prhclust.table
+```
+
