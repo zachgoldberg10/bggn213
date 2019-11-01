@@ -2,7 +2,7 @@
 title: "Class09 Breast Cancer Miniproject"
 author: "Zach Goldberg"
 date: "10/30/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Read in data and look at it
 ```{r}
-wisc.df <- read.csv("https://bioboot.github.io/bimm143_S18/class-material/WisconsinCancer.csv")
+url = "WisconsinCancer.csv"
+wisc.df <- read.csv(url)
 head(wisc.df)
 ```
 ```{r}
@@ -43,7 +44,7 @@ Yes, the data needs to be scaled!
 
 Call prcomp()
 ```{r}
-wisc.pr <- prcomp(wisc.data, scale = TRUE)
+wisc.pr <- prcomp(wisc.data, scale = T)
 summary(wisc.pr)
 ```
 
@@ -161,7 +162,7 @@ table(grps, diagnosis)
 plot(wisc.pr$x[,1:2], col=grps)
 ```
 
-```{r}
+```{r eval=FALSE}
 library(rgl)
 plot3d(wisc.pr$x[,1:3], xlab="PC 1", ylab="PC 2", zlab="PC 3", cex=1.5, size=1, type="s", col=grps)
 rglwidget(width = 400, height = 400)
