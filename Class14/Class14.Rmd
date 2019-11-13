@@ -1,0 +1,258 @@
+---
+title: "Class 14: Transcriptomics and the analysis of RNA-Seq data"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+The data for this hands-on session comes from a published RNA-seq experiment where airway smooth muscle cells were treated with dexamethasone, a synthetic glucocorticoid steroid with anti-inflammatory effects (Himes et al. 2014).
+
+Glucocorticoids are used, for example, by people with asthma to reduce inflammation of the airways. The anti-inflammatory effects on airway smooth muscle (ASM) cells has been known for some time but the underlying molecular mechanisms are unclear.
+
+
+Himes et al. used RNA-seq to profile gene expression changes in four different ASM cell lines treated with dexamethasone glucocorticoid. They found a number of differentially expressed genes comparing dexamethasone-treated to control cells, but focus much of the discussion on a gene called CRISPLD2. This gene encodes a secreted protein known to be involved in lung development, and SNPs in this gene in previous GWAS studies are associated with inhaled corticosteroid resistance and bronchodilator response in asthma patients. They confirmed the upregulated CRISPLD2 mRNA expression with qPCR and increased protein expression using Western blotting.
+
+In the experiment, four primary human ASM cell lines were treated with 1 micromolar dexamethasone for 18 hours. For each of the four cell lines, we have a treated and an untreated sample. They did their analysis using Tophat and Cufflinks similar to our last day's hands-on session. For a more detailed description of their analysis see the PubMed entry 24926665 and for raw data see the GEO entry GSE52778.
+
+In this session we will read and explore the gene expression data from this experiment using base R functions and then perform a detailed analysis with the DESeq2 package from Bioconductor.
+
+```{r include=FALSE}
+library(BiocManager)
+library(DESeq2)
+```
+
+## Importing Data
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", stringsAsFactors = FALSE)
+metadata <-  read.csv("airway_metadata.csv", stringsAsFactors = FALSE)
+
+```
+
+```{r}
+head(counts)
+```
+
+How many genes?
+```{r}
+nrow(counts)
+```
+
+```{r}
+head(metadata)
+```
+
+Are count column names and metadata row names the same?
+```{r}
+all(colnames(counts)[-1] == metadata$id)
+```
+
+## Toy analysis
+
+Firt we need to access the columns of our COuntData that are control and then find their mean.
+```{r}
+control.id <- metadata[metadata$dex == "control",]$id
+```
+
+```{r}
+head(counts[,control.id])
+```
+
+Mean counts for control exps
+```{r}
+control.mean <- rowSums(counts[,control.id])/length(control.id)
+names(control.mean) <- counts$ensgene
+```
+
+Mean counts for treated exps
+```{r}
+treated.id <- metadata[metadata$dex == "treated",]$id
+treated.mean <- rowSums(counts[,treated.id])/length(treated.id)
+names(treated.mean) <- counts$ensgene
+
+```
+
+Store together
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+plot(meancounts, log = "xy")
+```
+
+Calculate Log2FC
+
+```{r}
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+
+head(meancounts)
+```
+
+Exclude NaNs and infs (from zeros in expression)
+```{r}
+zerovals <- which(meancounts[,1:2] == 0, arr.ind = TRUE) #arr.ind returns array indicies
+to.rm <- unique(zerovals[,1])
+mycounts <- meancounts[-to.rm,]
+
+head(mycounts)
+```
+
+How many genes are left after removing zeros?
+```{r}
+nrow(mycounts)
+```
+
+Filter by a threshold of Log2FC of 2
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+```
+
+How many genes were upregulated?
+```{r}
+sum(up.ind)
+```
+
+How many genes were downregulated?
+```{r}
+sum(down.ind)
+```
+
+In total, how many genes were up or down by at least log2FC of 2?
+```{r}
+sum(down.ind) + sum(up.ind)
+```
+
+## Adding annotation data
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+
+columns(org.Hs.eg.db)
+```
+
+We can use the mapIds() function to add individual columns to our results table. We provide the row names of our results table as a key, and specify that keytype=ENSEMBL. The column argument tells the mapIds() function which information we want, and the multiVals argument tells the function what to do if there are multiple possible values for a single input value. Here we ask to just give us back the first one that occurs in the database.
+
+Adding gene symbols
+```{r}
+mycounts$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="SYMBOL",          # The new format we want to add
+                     multiVals="first")
+head(mycounts)
+```
+
+Adding Entrez IDs and 
+```{r}
+mycounts$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="ENTREZID",          # The new format we want to add
+                     multiVals="first")
+mycounts$uniprot <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="UNIPROT",          # The new format we want to add
+                     multiVals="first")
+head(mycounts)
+```
+
+Look at up regulated genes
+```{r}
+head( mycounts[up.ind,])
+```
+
+## Proper Analysis with DESeq2
+
+```{r}
+library(DESeq2)
+citation("DESeq2")
+```
+
+#Import Data
+
+You can construct a DESeqDataSet from (1) a count matrix, (2) a metadata file, and (3) a formula indicating the design of the experiment.
+
+The third needed item that has to be specified at the beginning of the analysis is a design formula. This tells DESeq2 which columns in the sample information table (colData) specify the experimental design (i.e. which groups the samples belong to) and how these factors should be used in the analysis. Essentially, this formula expresses how the counts for each gene depend on the variables in colData.
+
+Take a look at metadata again. The thing we're interested in is the dex column, which tells us which samples are treated with dexamethasone versus which samples are untreated controls. We'll specify the design with a tilde, like this: design=~dex. (The tilde is the shifted key to the left of the number 1 key on my keyboard. It looks like a little squiggly line).
+
+We will use the DESeqDataSetFromMatrix() function to build the required DESeqDataSet object and call it dds, short for our DESeqDataSet. If you get a warning about "some variables in design formula are characters, converting to factors" don't worry about it. Take a look at the dds object once you create it.
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts, colData = metadata, design = ~dex, tidy = TRUE)
+dds
+```
+
+Call DESeq2 function to add analysis info to dds
+```{r}
+dds <- DESeq(dds)
+```
+
+Get results
+```{r}
+res <- results(dds)
+res
+
+```
+Summary of results
+```{r}
+summary(res)
+```
+
+# Volcano Plot
+
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+```
+
+With coloring and cut-off lines
+
+```{r}
+# Setup our custom point color vector 
+mycols <- rep("gray", nrow(res))
+mycols[ abs(res$log2FoldChange) > 2 ]  <- "red" 
+
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+
+# Volcano plot with custom colors 
+plot( res$log2FoldChange,  -log(res$padj), 
+ col=mycols, ylab="-Log(P-value)", xlab="Log2(FoldChange)" )
+
+# Cut-off lines
+abline(v=c(-2,2), col="gray", lty=2)
+abline(h=-log(0.1), col="gray", lty=2)
+```
+
+For even more customization you might find the EnhancedVolcano bioconductor package useful (Note. It uses ggplot under the hood):
+
+First we will add the more understandable gene symbol names to our full results object res as we will use this to label the most interesting genes in our final plot.
+
+```{r}
+x <- as.data.frame(res)
+x$symbol <- mapIds(org.Hs.eg.db, 
+                   keys=row.names(x),
+                   keytype="ENSEMBL",
+                   column="SYMBOL",
+                   multiVals="first")
+```
+
+```{r}
+library(EnhancedVolcano)
+
+EnhancedVolcano(x,
+    lab = x$symbol,
+    x = 'log2FoldChange',
+    y = 'pvalue')
+```
+
+```{r}
+sessionInfo()
+```
+
