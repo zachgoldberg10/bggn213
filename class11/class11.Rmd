@@ -1,0 +1,67 @@
+---
+title: "Class 11: Structural Bioinformatics 1"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Structural Bioinformatics
+
+## Section 1: Introduction to the RCSB Protein Data Bank (PDB)
+
+Q1: Download a CSV file from the PDB site (accessible from “Analyze” -> “PDB Statistics” >
+“by Experimental Method and Molecular Type”. Move this CSV file into your RStudio project
+and determine the percentage of structures solved by X-Ray and Electron Microscopy. Also can
+you determine what proportion of structures are protein? 
+```{r}
+data <- read.csv("Data Export Summary.csv")
+data
+```
+
+```{r}
+
+ans <- data$Total/sum(data$Total) *100
+names(ans) <- data$Experimental.Method
+round(ans,2)
+```
+
+Also can you determine what proportion of structures are protein?
+```{r}
+areProt <- sum(data$Proteins)/sum(data$Total)
+round(areProt, 2)
+```
+
+## Section 3: Bio3d
+```{r}
+library(bio3d)
+pdb <- read.pdb("1hsg")
+pdb
+```
+
+```{r}
+str(pdb)
+
+
+```
+
+Atom selection
+```{r}
+ca.inds <- atom.select(pdb, "calpha")
+
+```
+
+Write new PDB of only protein
+```{r}
+prot <- atom.select(pdb, "protein", value =  TRUE)
+write.pdb(prot, file = "1hsg_protein.pdb")
+```
+
+
+Write new PDB of only ligand
+```{r}
+ligand <- atom.select(pdb, "ligand", value = TRUE)
+write.pdb(ligand, file = "1hsg_ligand.pdb")
+```
+
