@@ -60,12 +60,11 @@ Use just the Tilapia sequence for PDB search
 tilapia <- read.fasta("NileTilapiaBrinp1.txt")
 ```
 
-```{r, eval= FALSE}
+```{r}
 blast_pdb <- blast.pdb(tilapia)
 ```
 
 ```{r}
-head(blast_pdb)
 write.csv(blast_pdb$hit.tbl, file = "BlastPDB.csv")
 ```
 
