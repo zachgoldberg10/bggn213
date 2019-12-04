@@ -8,7 +8,7 @@ Contents:
 - Class08 [Intro to Machine Learning](https://github.com/zachgoldberg10/bggn213/blob/master/Class08/Class08.md)
 - Class09 [Unsupervised Learning](https://github.com/zachgoldberg10/bggn213/blob/master/Class09/Class09.md)
 - Class10 Version Control
-- Class11 [Structural Bioinformatics]()
+- Class11 [Structural Bioinformatics](https://github.com/zachgoldberg10/bggn213/blob/master/class11/class11.md)
 - Class12 [Bioinformatics in drug discovery and design](https://github.com/zachgoldberg10/bggn213/blob/master/class12/Class12.md)
 - Class14 [Transcriptomics and the analysis of RNA-Seq data](https://github.com/zachgoldberg10/bggn213/blob/master/Class14/Class14.md)
 - Class15 [Genome annotation and the interpretation of gene lists](https://github.com/zachgoldberg10/bggn213/blob/master/Class15/Class15.md)
