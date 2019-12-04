@@ -1,0 +1,83 @@
+---
+title: "Class 18: Designing a Cancer Vaccine"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Part 1: Identifing sites of mutation
+```{r}
+library(bio3d)
+```
+
+```{r}
+seqs <- read.fasta("lecture18_sequences.fa")
+seqs
+muts <- which(seqs$ali[1,]!= seqs$ali[2,])
+
+```
+
+Find point mutations and exclude gaps
+```{r}
+cons <- conserv(seqs)
+mut.sites <- which(cons<1)
+gaps <- gap.inspect(seqs)
+mut.sites <- mut.sites[mut.sites %in% gaps$f.inds]
+mut.sites
+
+```
+
+```{r}
+## Make a "names" label for our output sequences (one per mutant)
+mut.names <- paste0(seqs$ali["P53_wt",mut.sites],
+                       mut.sites,
+                       seqs$ali["P53_mutant",mut.sites])
+
+mut.names
+```
+
+
+9-mers unique to mutant p53
+```{r}
+start <- mut.sites -8
+end <- mut.sites +8
+
+store.mers <- matrix("-", nrow = length(mut.sites), ncol = 17)
+rownames(store.mers) <- mut.names
+
+for(i in 1:length(mut.sites)) {
+  store.mers[i,] <- seqs$ali["P53_mutant", start[i]:end[i]]
+}
+
+store.mers
+```
+
+Write out into FASTA
+```{r}
+## First blank out the gap positions 
+store.mers[store.mers == "-"] <- ""
+
+## Output a FASTA file for further analysis
+write.fasta(seqs=store.mers, ids=mut.names, file="subsequences.fa")
+```
+
+# Part 2: Patient HLA typing results and HLA binding prediction
+
+```{r}
+results <- read.csv("iedb_results.csv")
+results <- results[order(results$Percentile.Rank),]
+
+sig.results <- results[results$Percentile.Rank <= 0.5,]
+result_pep <- matrix(sig.results$peptide)
+rownames(result_pep) <- sig.results$allele
+
+write.fasta(seqs = result_pep, ids = c(1:5), file = "peptides.fa")
+
+```
+
+
+```{r}
+sessionInfo()
+```
+

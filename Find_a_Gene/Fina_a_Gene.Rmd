@@ -1,0 +1,85 @@
+---
+title: "Find A Gene"
+author: "Zach Goldberg"
+date: "12/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+aln <- read.fasta("Q5_MultipleAlignments.fasta")
+aln$id <- c("Carp (Novel)", "Homo Sapien", "Zebrafish", "Pike", "Cod", "Tilapia", "Mouse", "Xenopus", "Gekko")
+mat <- seqidentity(aln)
+
+```
+
+```{r}
+heatmap(mat, symm = T, margins =  c(7,7), scale = "none",
+        main = "Clustered Heatmap of BRINP1 Sequence Identity")
+```
+[Q8] Using R/Bio3D (or an online blast server if you prefer), search the main protein structure database for the most similar atomic resolution structures to your aligned sequences. 
+
+List the top 3 unique hits (i.e. not hits representing different chains from the same structure) along with their Evalue and sequence identity to your query. Please also add annotation details of these structures. For example, include the annotation terms PDB identifier (structureId), Method used to solve the structure (experimentalTechnique), resolution (resolution), and source organism (source). 
+
+HINT: You can use a single sequence from your alignment or generate a consensus sequence from your alignment using the Bio3D function consensus(). The Bio3D functions blast.pdb(), plot.blast() and pdb.annotate() are likely to be of most relevance for completing this task. Note that the results of blast.pdb() contain the hits PDB identifier (or pdb.id) as well as Evalue and identity. The results of pdb.annotate() contain the other annotation terms noted above. 
+
+Note that if your consensus sequence has lots of gap positions then it will be better to use an original sequence from the alignment for your search of the PDB. In this case you could chose the sequence with the highest identity to all others in your alignment by calculating the row-wise maximum from your sequence identity matrix. 
+
+
+```{r}
+# Generate Consensus Sequence 
+con <- consensus(aln, cutoff = 0.6)
+
+# How many positions are gaps?
+gaps <- sum(con$seq == "-")
+gaps
+
+```
+
+```{r}
+# What percent of the consensus sequence are gaps?
+gaps/length(con$seq)
+
+```
+This is too many gaps. Instead, choose best match from rowSums of identity matrix
+```{r}
+row_sums <- rowSums(mat)
+sort(row_sums, decreasing = TRUE)
+```
+
+Use just the Tilapia sequence for PDB search
+
+```{r}
+tilapia <- read.fasta("NileTilapiaBrinp1.txt")
+```
+
+```{r, eval= FALSE}
+blast_pdb <- blast.pdb(tilapia)
+```
+
+```{r}
+head(blast_pdb)
+write.csv(blast_pdb$hit.tbl, file = "BlastPDB.csv")
+```
+
+```{r}
+plot.blast(blast_pdb)
+```
+
+```{r}
+
+s <- substr(blast_pdb$hit.tbl$subjectids, 1, 4)
+a <- pdb.annotate(blast_pdb$hit.tbl$subjectids)
+a
+
+write.csv(a, file = "PDB_Annotation.csv")
+```
+
+
