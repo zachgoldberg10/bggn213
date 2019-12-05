@@ -1,6 +1,5 @@
 # Zach Goldberg
-This is my work from the [Bioinformatics course at UC San Deigo from Fall Quarter 2019](https://bioboot.github.io/bggn213_F19/)
-Instructor: [Barry Grant](http://thegrantlab.org/)
+This is my work from the [Bioinformatics course at UC San Deigo from Fall Quarter 2019](https://bioboot.github.io/bggn213_F19/)</br> Instructor: [Barry Grant](http://thegrantlab.org/)
 
 Contents:
 - Class 5 [Data exploration and visualization in R](https://github.com/zachgoldberg10/bggn213/blob/master/Class05/Class05.md)
